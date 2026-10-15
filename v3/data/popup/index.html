@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MeowCheats</title>
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M6 14 5 5l8 5a16 16 0 0 1 6 0l8-5-1 9a11 11 0 1 1-20 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 17h2m8 0h2m-8 5 2 1 2-1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <div><h1>MeowCheats</h1><p id="site">Loading current site…</p></div>
+      </div>
+      <div class="panel-tools">
+        <button class="icon-button" id="side-panel" title="Open side panel" aria-label="Open side panel" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/></svg></button>
+        <button class="icon-button" id="floating-panel" title="Floating panel" aria-label="Floating panel" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="3"/><rect x="10" y="10" width="11" height="11" rx="2"/></svg></button>
+        <button class="icon-button" id="hide-panel" title="Close panel" aria-label="Close panel" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
+      </div>
+    </header>
+    <div class="panel-layout">
+      <main class="panel-scroll" id="panel-content" aria-label="MeowCheats controls" tabindex="0">
+        <form id="typer-form">
+          <div class="editor-heading"><h2>Auto typer</h2></div>
+          <label class="field-label" for="text">Your text</label>
+          <textarea id="text" rows="6" spellcheck="false" placeholder="Paste or edit your text here…" required></textarea>
+          <div class="timing" aria-label="Typing timing">
+            <label for="preparationDelay">Start delay<span class="number-field"><input id="preparationDelay" type="number" min="1" max="60" step="1" value="7" required><span>s</span></span></label>
+            <label for="minDelay">Min / character<span class="number-field"><input id="minDelay" type="number" min="10" max="2000" step="1" value="110" required><span>ms</span></span></label>
+            <label for="maxDelay">Max / character<span class="number-field"><input id="maxDelay" type="number" min="10" max="2000" step="1" value="150" required><span>ms</span></span></label>
+          </div>
+          <label class="field-label" for="engine">Typing method</label>
+          <select id="engine"><option value="native" selected>macOS simulated keyboard</option><option value="browser">Browser editing (Unsafe)</option></select>
+          <label class="check"><input type="checkbox" id="preserveFormatting" checked> Preserve code formatting</label>
+          <p class="hint">Keyboard mode: temporarily disables auto-indent and paired characters in supported editors, and checks the inserted text. Tabs stay tabs. Stops if the editor cannot be checked. Browser editing already inserts the draft directly.</p>
+          <p class="development-note">*Developing: Browser editing (Unsafe)</p>
+        </form>
+        <details id="native-setup" class="settings-card" hidden>
+          <summary>Keyboard helper <span class="summary-tag">macOS</span></summary>
+          <div class="details-content">
+            <div class="helper-buttons"><button type="button" id="native-check">Check keyboard helper</button><button type="button" id="native-permission">Request macOS keyboard permission</button></div>
+            <p id="native-status" role="status"></p>
+            <p class="hint">Requires the local MeowCheats keyboard helper and macOS Accessibility permission. This sends OS-level simulated keys; acceptance by the website is not guaranteed. With Preserve code formatting off, your editor's indentation, paired characters and Tab behavior apply.</p>
+            <p class="hint">Existing installations may still appear as meowtantra Keyboard in macOS Accessibility settings.</p>
+            <p id="native-id" class="hint"></p>
+          </div>
+        </details>
+        <section id="site-settings" class="settings-card" aria-labelledby="active-heading">
+          <div class="section-heading"><h2 id="active-heading">Site controls</h2><span class="summary-tag">This site</span></div>
+          <label class="check active-control"><input type="checkbox" id="active" disabled> Keep this site active</label>
+          <p id="active-note" class="hint"></p>
+          <button id="reload" hidden>Reload to apply changes</button>
+          <details id="site-controls">
+            <summary>Fullscreen &amp; cursor controls <span class="unsafe">(Unsafe)</span></summary>
+            <div class="details-content">
+              <label class="check"><input type="checkbox" id="blockFullscreen" disabled><span>Prevent website fullscreen requests <span class="unsafe">(Unsafe)</span></span></label>
+              <label class="check"><input type="checkbox" id="blockPointerLock" disabled><span>Prevent the website locking the cursor <span class="unsafe">(Unsafe)</span></span></label>
+              <label class="check"><input type="checkbox" id="mousemove" disabled><span>Suppress page-wide cursor movement listeners <span class="unsafe">(Unsafe)</span></span></label>
+            </div>
+          </details>
+        </section>
+        <details class="settings-card" id="usage-notes">
+          <summary>Shortcuts &amp; help</summary>
+          <div class="details-content">
+            <p id="panel-shortcut" class="hint"></p>
+            <p class="hint">Draft saved locally. Browser editing inserts at the cursor, replacing selected text. Keyboard mode follows the editor's normal key behavior.</p>
+            <p class="hint">The menu shortcut and Start enable always active on this website. Keep this site active filters common tab-switch and page-leave signals. Normal movement between fields stays available. Reload once for earliest coverage.</p>
+            <p class="hint">Fullscreen and cursor controls apply only to this site. Cursor filtering keeps element interactions working; reload once to cover previously registered listeners. Fullscreen requests are refused rather than reported as successful. Existing fullscreen can be exited normally with Escape.</p>
+          </div>
+        </details>
+      </main>
+      <nav class="utility-rail" aria-label="Panel navigation">
+        <a class="rail-button" href="#typer-form" aria-current="location" title="Text and typing settings" aria-label="Text and typing settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M12 5v14M8 19h8"/></svg></a>
+        <a class="rail-button" href="#site-settings" title="Site controls" aria-label="Site controls"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg></a>
+        <button class="rail-button rail-bottom" id="options" title="More settings" aria-label="More settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4 1-2h4l1 2 3 2 2 1v4l-2 1-2 3v3l-3 2-2-1H8l-2 1-3-2v-3l-2-3 1-3 2-1 2-3Z" transform="translate(1 1) scale(.9)"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </nav>
+    </div>
+    <footer class="action-dock">
+      <div class="buttons"><button type="submit" form="typer-form" id="start" disabled>Start typing</button><button type="button" id="stop" disabled>Stop</button><button type="button" id="save" disabled>Save draft</button></div>
+      <p id="status" role="status" aria-live="polite">Loading…</p>
+      <p class="dock-hint">Start, then focus your field. <kbd>Esc</kbd> stops typing.</p>
+    </footer>
+  </div>
+  <script src="index.js"></script>
+</body>
+</html>

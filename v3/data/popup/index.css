@@ -1,0 +1,103 @@
+:root { color-scheme: dark; font: 13px/1.45 system-ui, -apple-system, BlinkMacSystemFont, sans-serif; background: #191919; color: #ededed; }
+* { box-sizing: border-box; }
+html { height: 100%; overflow: hidden; overscroll-behavior: none; }
+/* Chrome measures action popups from an initially tiny viewport. Keep their
+   intrinsic size independent of viewport units to avoid a 25px sizing loop. */
+body { width: 390px; height: 600px; margin: 0; overflow: hidden; background: #191919; }
+body.persistent { width: 100%; height: 100%; min-width: 0; max-width: 100vw; max-height: 100dvh; }
+.app-shell { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; min-height: 0; }
+.app-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 65px; padding: 12px 14px; border-bottom: 1px solid #303030; background: #202020; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand-mark { width: 28px; height: 28px; flex-shrink: 0; }
+h1, h2, p { margin: 0; }
+h1 { font-size: 16px; font-weight: 650; letter-spacing: -.3px; }
+#site { max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #969696; font-size: 11px; }
+.panel-tools { display: flex; gap: 3px; flex-shrink: 0; }
+button, a, input, textarea, select, summary { -webkit-tap-highlight-color: transparent; }
+button, .rail-button { border: 1px solid #414141; border-radius: 9px; background: transparent; color: #d1d1d1; font: inherit; cursor: pointer; }
+button { padding: 9px 12px; }
+button:hover:not(:disabled), .rail-button:hover { background: #2a2a2a; border-color: #626262; color: #fff; }
+button:disabled { opacity: .36; cursor: default; }
+.icon-button { display: grid; place-items: center; width: 30px; height: 30px; padding: 6px; border: 0; border-radius: 7px; }
+svg { display: block; }
+.icon-button svg, .rail-button svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.panel-layout { display: grid; grid-template-columns: minmax(0, 1fr) 43px; min-height: 0; overflow: hidden; }
+.panel-scroll { min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; scrollbar-color: #555 #191919; scrollbar-gutter: stable; padding: 22px 18px 24px; scroll-padding: 18px; }
+.panel-scroll::-webkit-scrollbar { width: 6px; }
+.panel-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 6px; }
+.panel-scroll::-webkit-scrollbar-track { background: #191919; }
+#typer-form, #site-settings { scroll-margin-top: 0; }
+.editor-heading { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 20px; }
+.editor-heading h2 { font-size: 22px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; }
+.field-label { display: block; margin-bottom: 7px; color: #a3a3a3; font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+textarea, input[type=number], select { width: 100%; min-width: 0; border: 1px solid #363636; border-radius: 11px; background: #202020; color: #ededed; font: inherit; }
+textarea { display: block; height: 158px; min-height: 100px; max-height: 300px; padding: 14px; resize: vertical; font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; tab-size: 4; overflow: auto; overscroll-behavior: contain; }
+textarea::placeholder { color: #939393; font: 13px/1.6 system-ui, sans-serif; }
+.timing { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 18px 0; }
+.timing label { display: flex; flex-direction: column; justify-content: space-between; gap: 7px; min-width: 0; color: #a3a3a3; font-size: 10px; }
+.number-field { position: relative; display: block; }
+.number-field input { height: 39px; padding: 8px 25px 8px 9px; border-radius: 8px; font-size: 12px; appearance: textfield; -moz-appearance: textfield; }
+.number-field input::-webkit-inner-spin-button, .number-field input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.number-field > span { position: absolute; right: 8px; top: 11px; color: #8c8c8c; pointer-events: none; font-size: 10px; }
+select { min-height: 43px; padding: 10px; font-size: 12px; }
+.development-note { margin: 8px 0 20px; color: #69d58b; font-size: 10px; line-height: 1.5; }
+.settings-card { border-top: 1px solid #2d2d2d; padding: 17px 0; }
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.section-heading h2 { font-size: 12px; font-weight: 600; }
+.summary-tag { color: #8c8c8c; font-size: 9px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; }
+summary { cursor: pointer; color: #ccc; font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
+summary .summary-tag { float: right; margin-top: 3px; }
+.details-content { padding-top: 12px; }
+#site-controls { margin-top: 16px; }
+#site-controls summary { font-size: 11px; }
+.check { display: flex; align-items: flex-start; gap: 9px; margin: 0 0 13px; color: #bcbcbc; font-size: 11px; line-height: 1.55; }
+.check input { flex-shrink: 0; margin: 2px 0 0; accent-color: #ededed; width: 14px; height: 14px; }
+.active-control { margin-bottom: 0; color: #e4e4e4; font-size: 12px; }
+.unsafe { color: #d9ac83; font-size: 10px; white-space: nowrap; }
+.hint { color: #939393; font-size: 11px; line-height: 1.6; margin: 10px 0 0; overflow-wrap: anywhere; }
+.hint:empty, #native-status:empty { display: none; }
+.helper-buttons { display: grid; gap: 8px; }
+.helper-buttons button { text-align: left; font-size: 11px; }
+#native-status { color: #ccc; font-size: 11px; margin-top: 10px; overflow-wrap: anywhere; }
+#reload { margin-top: 10px; font-size: 11px; }
+.utility-rail { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 5px 16px; border-left: 1px solid #303030; background: #151515; }
+.rail-button { display: grid; place-items: center; width: 31px; height: 33px; padding: 6px; border: 0; text-decoration: none; color: #8e8e8e; }
+.rail-button[aria-current="location"] { color: #ededed; background: #2b2b2b; }
+.rail-bottom { margin-top: auto; }
+.action-dock { padding: 12px 15px 10px; border-top: 1px solid #303030; background: #191919; box-shadow: 0 -8px 20px #19191988; }
+.buttons { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 7px; }
+.buttons button { min-height: 42px; padding: 9px 10px; font-size: 10px; font-weight: 650; letter-spacing: .09em; text-transform: uppercase; white-space: nowrap; }
+#start { background: #f1f1f1; color: #171717; border-color: #f1f1f1; }
+#start:hover:not(:disabled) { background: #dcdcdc; border-color: #dcdcdc; }
+#status { max-height: 72px; min-height: 16px; overflow-y: auto; overscroll-behavior: contain; margin: 9px 0 2px; color: #ccc; font-size: 11px; overflow-wrap: anywhere; }
+.dock-hint { color: #828282; font-size: 10px; }
+kbd { font: inherit; color: #bcbcbc; }
+:focus-visible { outline: 2px solid #a7bfff; outline-offset: 3px; }
+.panel-scroll:focus-visible { outline-offset: -3px; }
+[hidden] { display: none !important; }
+@media (max-width: 320px) {
+  .app-header { padding: 10px; }
+  h1 { font-size: 14px; }
+  .brand { gap: 7px; }
+  .brand-mark { width: 23px; height: 23px; }
+  #site { max-width: 145px; }
+  .panel-layout { grid-template-columns: minmax(0, 1fr) 36px; }
+  .panel-scroll { padding: 17px 11px 20px; }
+  .utility-rail { padding-left: 2px; padding-right: 2px; }
+  .editor-heading h2 { font-size: 18px; letter-spacing: .11em; }
+  .timing { gap: 5px; }
+  .timing label { font-size: 9px; }
+  .number-field input { padding-left: 6px; font-size: 11px; }
+  .action-dock { padding: 10px; }
+  .buttons { gap: 5px; }
+  .buttons button { padding: 8px; font-size: 9px; letter-spacing: .04em; }
+}
+@media (max-height: 500px) {
+  .app-header { min-height: 52px; padding-top: 8px; padding-bottom: 8px; }
+  .panel-scroll { padding-top: 14px; }
+  .editor-heading { margin-bottom: 12px; }
+  textarea { height: 110px; }
+  .timing { margin: 12px 0; }
+  .action-dock { padding-top: 8px; padding-bottom: 8px; }
+  .dock-hint { display: none; }
+}
