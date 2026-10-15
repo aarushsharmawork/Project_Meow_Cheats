@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 task_native_dir="$(cd -- "$(dirname -- "$0")" && pwd)"
-task_binary="$task_native_dir/build/meowtantra Keyboard.app/Contents/MacOS/meowtantra-keyboard"
+task_binary="$task_native_dir/build/MeowCheats Keyboard.app/Contents/MacOS/meowcheats-keyboard"
 task_detect_only=false
 if [[ "${1:-}" == '--detect-only' ]]; then
   task_detect_only=true

@@ -15,7 +15,7 @@ Safari is not supported by this package. The simulated keyboard method requires 
 
 1. Open **MeowCheats** once after loading it. It remembers its extension ID in browser storage.
 2. In Finder, double-click **native/install.command**. It detects the loaded extension, saves **v3/setup-<extension-ID>.json** inside the extension folder, and connects the helper automatically. No setup file is downloaded.
-3. Open MeowCheats → **Keyboard helper** → **Request macOS keyboard permission**. In **System Settings → Privacy & Security → Accessibility**, enable the helper and browser if requested. The helper may appear as **MeowCheats Keyboard** or **meowtantra Keyboard**. This approval must be given by you.
+3. Open MeowCheats → **Keyboard helper** → **Request macOS keyboard permission**. In **System Settings → Privacy & Security → Accessibility**, enable the helper and browser if requested. The helper appears as **MeowCheats Keyboard**. This approval must be given by you.
 4. Reopen the browser if needed, then click **Check keyboard helper**. Continue when it confirms permissions are enabled.
 
 If building requires Apple’s Command Line Tools, run `xcode-select --install` in Terminal once, then rerun the installer. If detection finds nothing, close and reopen the browser and try again. For custom profiles, use `bash native/install.command YOUR_EXTENSION_ID chrome` (replace `chrome` with `edge` for Edge). Browser editing does not need this setup.
