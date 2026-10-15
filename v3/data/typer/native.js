@@ -89,7 +89,7 @@ const nativeTyping = (() => {
     if (platform.os !== 'mac') throw new Error('OS keyboard mode currently supports macOS only.');
     const pipe = connection();
     try { return await pipe.request('check', {prompt}); }
-    catch (e) { throw new Error(`${e.message} Run native/install.command with this extension ID: ${chrome.runtime.id}.`); }
+    catch (e) { throw new Error(`${e.message} Double-click native/install.command in the downloaded project for automatic setup. Manual fallback extension ID: ${chrome.runtime.id}.`); }
     finally { pipe.disconnect(); }
   };
   const permissionMessage = status => {
@@ -118,7 +118,7 @@ const nativeTyping = (() => {
     catch (e) {
       await fail(tabId, e.message);
       if (/native messaging host|not found|disconnected/i.test(e.message))
-        throw new Error(`${e.message} Helper setup: native/install.command; extension ID: ${chrome.runtime.id}.`);
+        throw new Error(`${e.message} Double-click native/install.command for automatic helper setup. Manual fallback extension ID: ${chrome.runtime.id}.`);
       throw e;
     }
   };
