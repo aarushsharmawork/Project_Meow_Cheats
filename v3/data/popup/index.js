@@ -14,7 +14,7 @@ const selectSection = hash => {
 for (const link of sectionLinks) link.addEventListener('click', () => selectSection(link.hash));
 window.addEventListener('hashchange', () => selectSection(location.hash || '#typer-form'));
 selectSection(location.hash);
-const defaults = {text: '', preparationDelay: 7, minDelay: 110, maxDelay: 150, keepActive: true, engine: 'native', preserveFormatting: true};
+const defaults = {text: '', preparationDelay: 3, minDelay: 110, maxDelay: 150, keepActive: true, engine: 'native', preserveFormatting: true};
 const controlIds = ['blockFullscreen', 'blockPointerLock', 'mousemove'];
 let tabId;
 let windowId;
@@ -109,7 +109,12 @@ byId('engine').addEventListener('change', () => {
   byId('native-setup').hidden = byId('engine').value !== 'native';
   save().catch(e => show(e.message));
 });
-byId('native-id').textContent = `If the helper is missing, run native/install.command with extension ID: ${chrome.runtime.id}`;
+byId('native-id').textContent = `First-time setup: double-click native/install.command in the project folder. It finds this extension and saves the setup file inside v3. Manual fallback extension ID: ${chrome.runtime.id}`;
+send('setup-export').then(result => {
+  if (!result.skipped) byId('native-setup-file').textContent = `Extension ID remembered. The installer saves its setup file at ${result.filename}.`;
+}).catch(error => {
+  byId('native-setup-file').textContent = error.message;
+});
 for (const id of ['native-check', 'native-permission']) byId(id).addEventListener('click', async () => {
   try {
     const state = await send('native-check', {prompt: id === 'native-permission'});

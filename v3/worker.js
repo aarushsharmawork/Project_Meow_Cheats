@@ -436,7 +436,7 @@ const runShortcut = (command, tabId) => queueTyper(tabId, async () => {
   if (command !== 'start-typing') throw new Error('Unknown shortcut.');
   try {
     const {typerDraft} = await chrome.storage.local.get({typerDraft: {}});
-    return await startTyping(tabId, {text: '', preparationDelay: 7, minDelay: 110, maxDelay: 150, engine: 'native', ...typerDraft});
+    return await startTyping(tabId, {text: '', preparationDelay: 3, minDelay: 110, maxDelay: 150, engine: 'native', ...typerDraft});
   }
   catch (e) {
     const state = await typerStatus(tabId);
@@ -459,11 +459,15 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
   catch (e) { notify(tabId, e.message).catch(error => console.debug('[MeowCheats]', error)); }
 });
 chrome.runtime.onMessage.addListener((request, sender, respond) => {
-  if (!['site-state', 'site-active', 'typer-start', 'typer-stop', 'typer-status', 'typer-ready', 'typer-cancel', 'native-cancel', 'native-check', 'site-controls', 'panel-show', 'panel-hide', 'panel-context'].includes(request.method)) return;
+  if (!['setup-export', 'site-state', 'site-active', 'typer-start', 'typer-stop', 'typer-status', 'typer-ready', 'typer-cancel', 'native-cancel', 'native-check', 'site-controls', 'panel-show', 'panel-hide', 'panel-context'].includes(request.method)) return;
   // Site pages can only dispatch their own countdown; popup controls are extension-only.
   if (sender.id !== chrome.runtime.id) return;
   if (!['typer-ready', 'typer-cancel', 'native-cancel'].includes(request.method) && !/^chrome-extension:|^moz-extension:/.test(sender.url || '')) return;
   if (['typer-ready', 'typer-cancel'].includes(request.method) && (!sender.tab || sender.frameId !== 0)) return;
+  if (request.method === 'setup-export') {
+    keyboardSetup.save().then(result => respond({ok: true, result}), error => respond({ok: false, error: error.message}));
+    return true;
+  }
   if (request.method === 'panel-context') {
     respond({ok: true, result: {tabId: sender.tab?.id}});
     return;
@@ -536,4 +540,4 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
   return true;
 });
 
-importScripts('data/typer/native.js');
+importScripts('data/typer/native.js', 'data/setup.js');

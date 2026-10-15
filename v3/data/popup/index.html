@@ -26,7 +26,7 @@
           <label class="field-label" for="text">Your text</label>
           <textarea id="text" rows="6" spellcheck="false" placeholder="Paste or edit your text here…" required></textarea>
           <div class="timing" aria-label="Typing timing">
-            <label for="preparationDelay">Start delay<span class="number-field"><input id="preparationDelay" type="number" min="1" max="60" step="1" value="7" required><span>s</span></span></label>
+            <label for="preparationDelay">Start delay<span class="number-field"><input id="preparationDelay" type="number" min="1" max="60" step="1" value="3" required><span>s</span></span></label>
             <label for="minDelay">Min / character<span class="number-field"><input id="minDelay" type="number" min="10" max="2000" step="1" value="110" required><span>ms</span></span></label>
             <label for="maxDelay">Max / character<span class="number-field"><input id="maxDelay" type="number" min="10" max="2000" step="1" value="150" required><span>ms</span></span></label>
           </div>
@@ -41,6 +41,7 @@
           <div class="details-content">
             <div class="helper-buttons"><button type="button" id="native-check">Check keyboard helper</button><button type="button" id="native-permission">Request macOS keyboard permission</button></div>
             <p id="native-status" role="status"></p>
+            <p id="native-setup-file" class="hint" role="status"></p>
             <p class="hint">Requires the local MeowCheats keyboard helper and macOS Accessibility permission. This sends OS-level simulated keys; acceptance by the website is not guaranteed. With Preserve code formatting off, your editor's indentation, paired characters and Tab behavior apply.</p>
             <p class="hint">Existing installations may still appear as meowtantra Keyboard in macOS Accessibility settings.</p>
             <p id="native-id" class="hint"></p>
