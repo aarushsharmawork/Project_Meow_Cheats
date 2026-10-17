@@ -5,6 +5,7 @@
   "default_locale": "en",
   "description": "__MSG_description__",
   "permissions": [
+    "activeTab",
     "storage",
     "scripting",
     "sidePanel",
@@ -13,9 +14,11 @@
   "host_permissions": [
     "*://*/*"
   ],
+  "optional_permissions": [
+    "declarativeNetRequestWithHostAccess"
+  ],
   "action": {
     "default_title": "MeowCheats",
-    "default_popup": "data/popup/index.html",
     "default_icon": {
       "16": "data/icons/disabled/16.png",
       "32": "data/icons/disabled/32.png",
@@ -35,6 +38,12 @@
   "background": {
     "service_worker": "worker.js"
   },
+  "content_scripts": [{
+    "matches": ["https://gemini.google.com/*"],
+    "all_frames": true,
+    "run_at": "document_idle",
+    "js": ["data/gemini-attachment.js"]
+  }],
   "options_ui": {
     "open_in_tab": true,
     "page": "data/options/index.html"
@@ -46,14 +55,14 @@
         "default": "Ctrl+Shift+U",
         "mac": "Command+Shift+U"
       },
-      "description": "Show or hide the MeowCheats menu and enable always active"
+      "description": "Open or close the MeowCheats side panel"
     },
     "start-typing": {
       "suggested_key": {
         "default": "Ctrl+Shift+Y",
         "mac": "Command+Shift+Y"
       },
-      "description": "Start typing the saved draft and enable always active"
+      "description": "Start or stop typing the saved draft"
     }
   },
   "browser_specific_settings": {
@@ -70,16 +79,5 @@
   "minimum_chrome_version": "116",
   "side_panel": {
     "default_path": "data/popup/index.html?mode=side"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "data/popup/index.html"
-      ],
-      "matches": [
-        "*://*/*"
-      ],
-      "use_dynamic_url": true
-    }
-  ]
+  }
 }
