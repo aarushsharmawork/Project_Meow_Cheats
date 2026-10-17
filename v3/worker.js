@@ -1,3 +1,6 @@
+// Old framing-only consent does not authorize the new reference-based rule.
+chrome.storage.local.remove('geminiEmbedEnabled').catch(console.error);
+
 const log = (...args) => chrome.storage.local.get({
   log: false
 }, prefs => prefs.log && console.log(...args));
@@ -188,7 +191,48 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
   return true;
 });
 
-/* Shared by the popup and the optional action shortcut. Never reload unsaved text. */
+// Chrome opens the native side panel directly from the toolbar gesture.
+chrome.sidePanel?.setPanelBehavior({openPanelOnActionClick: true}).catch(console.error);
+
+// Session storage survives worker suspension, but is cleared when the browser
+// session/extension ends. Chrome reports SIDE_PANEL context windowId as -1, so
+// getContexts() alone cannot tell which window has its panel open.
+const panelStateKey = windowId => `side-panel-open:${windowId}`;
+const setPanelVisible = (windowId, visible) => {
+  if (!Number.isInteger(windowId) || windowId < 0) return;
+  const key = panelStateKey(windowId);
+  (visible ? chrome.storage.session.set({[key]: true}) : chrome.storage.session.remove(key)).catch(console.error);
+};
+if (chrome.sidePanel.onOpened && chrome.sidePanel.onClosed) {
+  chrome.sidePanel.onOpened.addListener(({windowId}) => setPanelVisible(windowId, true));
+  chrome.sidePanel.onClosed.addListener(({windowId}) => setPanelVisible(windowId, false));
+}
+else {
+  // Older Chrome lacks panel visibility events. The panel UI connects only
+  // from a native panel, never when its HTML is opened in a tab for preview.
+  const panelPorts = new Map();
+  chrome.runtime.onConnect.addListener(port => {
+    if (port.name !== 'side-panel-lifecycle' || port.sender?.id !== chrome.runtime.id ||
+        port.sender.url !== chrome.runtime.getURL('data/popup/index.html?mode=side')) return;
+    let windowId;
+    let disconnected = false;
+    port.onDisconnect.addListener(() => {
+      disconnected = true;
+      if (panelPorts.get(windowId) !== port) return;
+      panelPorts.delete(windowId);
+      setPanelVisible(windowId, false);
+    });
+    port.onMessage.addListener(message => {
+      if (disconnected || !Number.isInteger(message.windowId) || windowId !== undefined) return;
+      windowId = message.windowId;
+      panelPorts.set(windowId, port);
+      setPanelVisible(windowId, true);
+    });
+  });
+}
+chrome.windows.onRemoved.addListener(windowId => setPanelVisible(windowId, false));
+
+/* Shared by panel views and shortcuts. Never reload unsaved text. */
 const siteState = async tabId => {
   const tab = await chrome.tabs.get(tabId);
   if (!/^https?:\/\//.test(tab.url || '')) throw new Error('Open a regular HTTP or HTTPS website to use these controls.');
@@ -196,13 +240,25 @@ const siteState = async tabId => {
   const prefs = await chrome.storage.local.get({hosts: [], enabled: true, siteControls: {}});
   const frames = await chrome.scripting.executeScript({
     target: {tabId, allFrames: true}, world: 'ISOLATED',
-    func: () => ({hostname: /^https?:$/.test(location.protocol) ? location.hostname : '',
-      protected: self.PROTECTED === true && !!document.getElementById('lwys-ctv-port')})
+    func: () => {
+      const extensionOwned = /^(chrome|moz)-extension:$/.test(location.protocol) ||
+        [...(location.ancestorOrigins || [])].some(origin => /^(chrome|moz)-extension:\/\//.test(origin));
+      const port = document.getElementById('lwys-ctv-port');
+      let controlHooks;
+      try { controlHooks = JSON.parse(port?.dataset.controlHooks || 'null'); }
+      catch (e) { controlHooks = null; }
+      return {hostname: !extensionOwned && /^https?:$/.test(location.protocol) ? location.hostname : '',
+        protected: self.PROTECTED === true && !!port, controlHooks};
+    }
   });
   const top = frames.find(f => f.frameId === 0)?.result;
   return {hostname, active: prefs.enabled && prefs.hosts.some(h => matchesHost(hostname, h)),
     protected: top?.protected === true, hosts: prefs.hosts,
     controls: {...emptyControls, ...prefs.siteControls[hostname]},
+    controlHooks: Object.fromEntries(Object.keys(emptyControls).map(key => {
+      const states = frames.filter(frame => frame.result?.hostname).map(frame => frame.result.controlHooks?.[key]);
+      return [key, states.length && states.every(state => state === 'ready') ? 'ready' : 'limited'];
+    })),
     frameHosts: [...new Set(frames.map(f => f.result?.hostname).filter(Boolean))]};
 };
 let settingsQueue = Promise.resolve();
@@ -212,6 +268,7 @@ const mutateSettings = task => {
   return result;
 };
 const setSiteActive = (tabId, active) => mutateSettings(async () => {
+  await removeLegacyPanel(tabId);
   const current = await siteState(tabId);
   let hosts = current.hosts.slice();
   if (active) {
@@ -238,14 +295,14 @@ const setSiteActive = (tabId, active) => mutateSettings(async () => {
   return {hostname: current.hostname, active, reloadRequired, controls: current.controls,
     wildcardRemoved: !active && current.hosts.some(h => h === '*' || h.startsWith('*.')) && hosts.length !== current.hosts.length};
 });
-const panelCommand = async (tabId, command = 'toggle') => {
-  const tab = await chrome.tabs.get(tabId);
-  if (!/^https?:\/\//.test(tab.url || '')) throw new Error('Open a regular website to show the floating panel.');
-  await chrome.scripting.executeScript({target: {tabId}, world: 'ISOLATED', files: ['data/panel/overlay.js']});
-  const results = await chrome.scripting.executeScript({target: {tabId}, world: 'ISOLATED',
-    func: command => self.__alwaysActivePanel[command](), args: [command]});
-  return results[0]?.result;
-};
+// Migration only: remove an obsolete webpage panel after a user opens/uses the
+// new version. Do not reload the website or change its fullscreen state.
+const removeLegacyPanel = tabId => chrome.scripting.executeScript({target: {tabId}, world: 'ISOLATED',
+  func: () => {
+    self.__alwaysActivePanel?.destroy?.();
+    delete self.__alwaysActivePanel;
+    document.getElementById('always-active-floating-panel')?.remove();
+  }}).catch(() => {});
 
 /* messaging */
 chrome.runtime.onMessage.addListener((request, sender, response) => {
@@ -362,9 +419,11 @@ const typerSettings = options => {
   }
   const engine = options.engine ?? 'browser';
   if (!['browser', 'native'].includes(engine)) throw new Error('Choose a supported typing method.');
-  if (options.preserveFormatting !== undefined && typeof options.preserveFormatting !== 'boolean') throw new Error('Preserve code formatting must be on or off.');
+  if (options.preserveFormatting !== undefined && typeof options.preserveFormatting !== 'boolean') throw new Error('Preserve code formatting (Unstable) must be on or off.');
+  if (options.skipLeadingFourSpaces !== undefined && typeof options.skipLeadingFourSpaces !== 'boolean') throw new Error('Preserve code formatting (Stable) must be on or off.');
+  const skipLeadingFourSpaces = engine === 'native' && (options.skipLeadingFourSpaces ?? (options.preserveFormatting === undefined));
   return {text: options.text, preparationDelay, minDelay, maxDelay, engine,
-    preserveFormatting: options.preserveFormatting !== false};
+    skipLeadingFourSpaces, preserveFormatting: !skipLeadingFourSpaces && options.preserveFormatting === true};
 };
 const controlCommand = async (tabId, command, argument) => {
   const results = await chrome.scripting.executeScript({
@@ -406,6 +465,7 @@ const queueTyper = (tabId, task) => {
   return result;
 };
 const ensureActive = async tabId => {
+  await removeLegacyPanel(tabId);
   const current = await siteState(tabId);
   if (!current.active || !current.protected || current.frameHosts.some(host => !current.hosts.some(entry => matchesHost(host, entry)))) {
     await setSiteActive(tabId, true);
@@ -430,36 +490,76 @@ const startTyping = async (tabId, draft) => {
   try { return await controlCommand(tabId, 'start', options); }
   catch (e) { await nativeTyping.stop(tabId); throw e; }
 };
-const runShortcut = (command, tabId) => queueTyper(tabId, async () => {
-  await ensureActive(tabId);
-  if (command === 'toggle-panel') return panelCommand(tabId, 'toggle');
-  if (command !== 'start-typing') throw new Error('Unknown shortcut.');
-  try {
-    const {typerDraft} = await chrome.storage.local.get({typerDraft: {}});
-    return await startTyping(tabId, {text: '', preparationDelay: 3, minDelay: 110, maxDelay: 150, engine: 'native', ...typerDraft});
-  }
-  catch (e) {
-    const state = await typerStatus(tabId);
-    if (!['countdown', 'starting', 'typing'].includes(state.phase)) {
-      await chrome.scripting.executeScript({target: {tabId}, world: 'ISOLATED', files: ['data/typer/controller.js']});
-      await controlCommand(tabId, 'fail', e.message);
+const stopTyping = async tabId => {
+  await nativeTyping.stop(tabId);
+  await controlCommand(tabId, 'stop');
+  await runnerCommand(tabId, 'stop');
+  return {phase: 'stopped', typed: 0, total: 0, message: 'Typing stopped.'};
+};
+const toggleSidePanel = async tabId => {
+  // Request the pre-gesture snapshot first, then open synchronously: awaiting
+  // an API response before open() loses Chrome's shortcut user gesture.
+  // open() is idempotent for an already-open panel; close that panel below.
+  const snapshot = chrome.storage.session.get(null);
+  const window = Number.isInteger(tabId) ? chrome.tabs.get(tabId) : chrome.windows.getLastFocused();
+  const opened = chrome.sidePanel.open(Number.isInteger(tabId) ? {tabId} : {windowId: chrome.windows.WINDOW_ID_CURRENT});
+  const [visibility, target] = await Promise.all([snapshot, window, opened]);
+  const windowId = Number.isInteger(tabId) ? target.windowId : target.id;
+  if (visibility[panelStateKey(windowId)]) {
+    // The manifest defines a global panel, so close the window's panel rather
+    // than asking Chrome to close a nonexistent tab-specific panel.
+    if (chrome.sidePanel.close) await chrome.sidePanel.close({windowId});
+    else {
+      // Chrome 116–140 has no close API. Disabling the global panel closes it;
+      // restore its availability so the next shortcut/toolbar click can open it.
+      await chrome.sidePanel.setOptions({enabled: false});
+      await chrome.storage.session.remove(Object.keys(visibility).filter(key => key.startsWith('side-panel-open:')));
+      await chrome.sidePanel.setOptions({enabled: true});
     }
-    await panelCommand(tabId, 'show');
-    throw e;
+    return;
   }
-});
+  const id = tabId ?? (await chrome.tabs.query({active: true, windowId}))[0]?.id;
+  if (Number.isInteger(id) && /^https?:\/\//.test((await chrome.tabs.get(id)).url || '')) {
+    await queueTyper(id, () => ensureActive(id));
+  }
+};
+const runShortcut = (command, tabId) => {
+  if (command === 'toggle-panel') return toggleSidePanel(tabId);
+  return queueTyper(tabId, async () => {
+    if (command !== 'start-typing') throw new Error('Unknown shortcut.');
+    const current = await typerStatus(tabId);
+    if (['countdown', 'starting', 'typing'].includes(current.phase) || current.interruptedByModifier) return stopTyping(tabId);
+    try {
+      const {typerDraft} = await chrome.storage.local.get({typerDraft: {}});
+      return await startTyping(tabId, {text: '', preparationDelay: 3, minDelay: 110, maxDelay: 150, engine: 'native', ...typerDraft});
+    }
+    catch (e) {
+      const state = await typerStatus(tabId);
+      if (!['countdown', 'starting', 'typing'].includes(state.phase)) {
+        await chrome.scripting.executeScript({target: {tabId}, world: 'ISOLATED', files: ['data/typer/controller.js']});
+        await controlCommand(tabId, 'fail', e.message);
+      }
+      throw e;
+    }
+  });
+};
 chrome.commands.onCommand.addListener(async (command, tab) => {
   if (!['toggle-panel', 'start-typing'].includes(command)) return;
   let tabId = tab?.id;
   try {
+    if (command === 'toggle-panel') { await runShortcut(command, tabId); return; }
     tabId ??= (await chrome.tabs.query({active: true, lastFocusedWindow: true}))[0]?.id;
     if (!Number.isInteger(tabId)) throw new Error('Open a regular website to use this shortcut.');
     await runShortcut(command, tabId);
   }
   catch (e) { notify(tabId, e.message).catch(error => console.debug('[MeowCheats]', error)); }
 });
+chrome.action.onClicked.addListener(tab => {
+  if (!Number.isInteger(tab.id) || !/^https?:\/\//.test(tab.url || '')) return;
+  queueTyper(tab.id, () => ensureActive(tab.id)).catch(error => notify(tab.id, error.message).catch(console.error));
+});
 chrome.runtime.onMessage.addListener((request, sender, respond) => {
-  if (!['setup-export', 'site-state', 'site-active', 'typer-start', 'typer-stop', 'typer-status', 'typer-ready', 'typer-cancel', 'native-cancel', 'native-check', 'site-controls', 'panel-show', 'panel-hide', 'panel-context'].includes(request.method)) return;
+  if (!['setup-export', 'site-state', 'site-active', 'typer-start', 'typer-stop', 'typer-status', 'typer-ready', 'typer-cancel', 'native-cancel', 'native-check', 'site-controls'].includes(request.method)) return;
   // Site pages can only dispatch their own countdown; popup controls are extension-only.
   if (sender.id !== chrome.runtime.id) return;
   if (!['typer-ready', 'typer-cancel', 'native-cancel'].includes(request.method) && !/^chrome-extension:|^moz-extension:/.test(sender.url || '')) return;
@@ -468,13 +568,9 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
     keyboardSetup.save().then(result => respond({ok: true, result}), error => respond({ok: false, error: error.message}));
     return true;
   }
-  if (request.method === 'panel-context') {
-    respond({ok: true, result: {tabId: sender.tab?.id}});
-    return;
-  }
   const tabId = ['typer-ready', 'typer-cancel', 'native-cancel'].includes(request.method) ? sender.tab?.id : request.tabId;
   if (sender.tab && /^chrome-extension:|^moz-extension:/.test(sender.url || '') && sender.frameId > 0 && tabId !== sender.tab.id) {
-    respond({ok: false, error: 'The floating panel can only control its own tab.'});
+    respond({ok: false, error: 'Embedded controls can only control their own tab.'});
     return;
   }
   if (!Number.isInteger(tabId)) {
@@ -484,10 +580,6 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
   queueTyper(tabId, async () => {
     switch (request.method) {
       case 'site-state': return siteState(tabId);
-      case 'panel-show':
-        await ensureActive(tabId);
-        return panelCommand(tabId, 'show');
-      case 'panel-hide': return panelCommand(tabId, 'hide');
       case 'site-controls': return mutateSettings(async () => {
         const current = await siteState(tabId);
         const controls = Object.fromEntries(Object.keys(emptyControls).map(key => [key, request.controls?.[key] === true]));
@@ -527,10 +619,7 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
       case 'typer-cancel':
       case 'native-cancel':
       case 'typer-stop': {
-        await nativeTyping.stop(tabId);
-        await controlCommand(tabId, 'stop');
-        await runnerCommand(tabId, 'stop');
-        return {phase: 'stopped', typed: 0, total: 0, message: 'Typing stopped.'};
+        return stopTyping(tabId);
       }
     }
   }).then(result => respond({ok: true, result})).catch(async e => {
@@ -540,4 +629,4 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
   return true;
 });
 
-importScripts('data/typer/native.js', 'data/setup.js');
+importScripts('data/typer/native.js', 'data/setup.js', 'data/gemini.js');
