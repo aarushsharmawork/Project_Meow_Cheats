@@ -49,8 +49,8 @@ Opening the menu or starting typing enables **Keep this site active** for the cu
 
 ## Shortcuts and panels
 
-- **Command+Shift+U** on Mac / **Ctrl+Shift+U** elsewhere: open or close the side panel.
-- **Command+Shift+Y** on Mac / **Ctrl+Shift+Y** elsewhere: start the saved draft; press again to stop the countdown or active typing. Press once more to start a new run.
+- **Command+Shift+U** on Mac : open or close the side panel.
+- **Command+Shift+Y** on Mac : run and stop the autotyper
 - Clicking the toolbar icon opens or closes the browser side panel. The right-hand buttons jump to typing settings or site controls. Escape also stops typing.
 
 The extension uses only the browser's side panel; no floating controls are inserted into websites. Browser fullscreen and website policies can still affect panel availability.
@@ -59,7 +59,7 @@ The extension uses only the browser's side panel; no floating controls are inser
 
 1. Open MeowCheats's side panel and click the **Gemini sparkle** button.
 2. Click **Enable Gemini** and approve its optional permission. This allows MeowCheats to remove framing and content-security headers only for the Gemini app it embeds.
-3. Use your Google account; no API key is needed. If sign-in is required, use **⋯ → Sign in**, then return and select **Reload Gemini**.
+3. Use your Google account.  If sign-in is required, use **⋯ → Sign in**, then return and select **Reload Gemini**.
 
 Gemini stays loaded when switching views or hiding the panel. Your typing draft is saved and typing stops when opening Gemini; your draft is never sent automatically. Use **⋯ → Disable Gemini** to unload it and revoke its optional permission. Google can still restrict embedded sign-in or connections; the extension does not bypass those checks.
 
