@@ -16,7 +16,7 @@
 node_modules/
 /native/build/
 
-# Generated per-installation setup files
+
 /v3/setup-*.json
 **/MeowCheats/setup-*.json
 /setup-*.json
