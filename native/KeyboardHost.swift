@@ -81,6 +81,15 @@ func validateCharacter(_ value: Any?) throws -> String {
     guard scalar.value >= 32 || text == "\n" || text == "\t", scalar.value != 127 else { throw HostError("Control characters other than Enter and Tab are not supported.") }
     return text
 }
+// Backspace is an explicit, session-guarded action, never a control character
+// hidden in a pasted draft. No other navigation or shortcut keys are accepted.
+func validateKey(_ message: [String: Any]) throws -> String? {
+    if let action = message["action"] {
+        guard action as? String == "backspace", message["character"] == nil else { throw HostError("Unsupported or ambiguous keyboard action.") }
+        return nil
+    }
+    return try validateCharacter(message["character"])
+}
 final class KeyboardHost {
     var token: String?
     var sequence = 0
@@ -124,7 +133,8 @@ final class KeyboardHost {
         case "check":
             let status = permissionStatus(prompt: message["prompt"] as? Bool == true)
             let result: [String: Any] = ["accessibility": status.accessibility, "axTrusted": status.axTrusted,
-                                         "postEventAccess": status.postEventAccess, "platform": "mac", "protocol": 3]
+                                         "postEventAccess": status.postEventAccess, "platform": "mac", "protocol": 3,
+                                         "capabilities": ["backspace": true]]
             return result
         case "begin":
             clear()
@@ -150,7 +160,7 @@ final class KeyboardHost {
         case "key":
             guard let expected = token, message["token"] as? String == expected, message["sequence"] as? Int == sequence else { throw HostError("Keyboard session or key sequence is invalid.") }
             guard message["focusGuard"] as? String == "isolated-field-v2" else { throw HostError("The extension must confirm the original DOM field before each key.") }
-            let character = try validateCharacter(message["character"])
+            let character = try validateKey(message)
             guard permission() else { clear(); throw HostError("Accessibility permission was revoked.") }
             let front = try browser()
             guard front.processIdentifier == processID, let app = application, let oldFocus = focus else { clear(); throw HostError("Browser focus changed. Typing stopped.") }
@@ -160,10 +170,10 @@ final class KeyboardHost {
             if CGEventSource.keyState(.combinedSessionState, key: 53) { clear(); throw HostError("Escape pressed. Typing stopped.") }
             let flags = CGEventSource.flagsState(.combinedSessionState)
             if !flags.intersection([.maskCommand, .maskControl, .maskAlternate, .maskShift]).isEmpty { clear(); throw HostError("A modifier key is held. Typing stopped to avoid triggering shortcuts.") }
-            let (key, shifted) = keyInfo(character)
+            let (key, shifted): (CGKeyCode, Bool) = character.map(keyInfo) ?? (51, false)
             guard let source = CGEventSource(stateID: .privateState), let down = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true), let up = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false) else { throw HostError("macOS could not create a keyboard event.") }
             down.flags = shifted ? .maskShift : []; up.flags = shifted ? .maskShift : []
-            if character != "\n" && character != "\t" {
+            if let character = character, character != "\n" && character != "\t" {
                 let units = Array(character.utf16)
                 units.withUnsafeBufferPointer { buffer in
                     down.keyboardSetUnicodeString(stringLength: units.count, unicodeString: buffer.baseAddress)
@@ -204,6 +214,13 @@ do {
         var rejected = false
         do { _ = try validateCharacter("ab") } catch { rejected = true }
         guard rejected else { throw HostError("Multiple characters were accepted.") }
+        guard try validateKey(["action": "backspace"]) == nil,
+              try validateKey(["character": "x"]) == "x" else { throw HostError("Indentation key validation failed.") }
+        for invalid in [["action": "delete"], ["action": "backspace", "character": "x"], ["character": "\u{08}"]] {
+            var invalidRejected = false
+            do { _ = try validateKey(invalid) } catch { invalidRejected = true }
+            guard invalidRejected else { throw HostError("An unsupported keyboard action was accepted.") }
+        }
         let locked = FocusSnapshot(window: nil, windowNumber: 101, field: nil)
         guard locked.matches(FocusSnapshot(window: nil, windowNumber: 101, field: nil)),
               !locked.matches(FocusSnapshot(window: nil, windowNumber: 102, field: nil)),

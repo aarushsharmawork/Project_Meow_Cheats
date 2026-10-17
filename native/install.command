@@ -35,7 +35,7 @@ if [[ "$task_detect_only" == true ]]; then
   printf '%s\n' "$task_matches"
   exit 0
 fi
-if [[ ! -x "$task_binary" ]]; then
+if [[ ! -x "$task_binary" || "$task_native_dir/KeyboardHost.swift" -nt "$task_binary" || "$task_native_dir/build.command" -nt "$task_binary" ]]; then
   if ! /usr/bin/xcode-select -p >/dev/null 2>&1; then
     printf 'Apple’s Command Line Tools are needed to build the helper.\nRun xcode-select --install in Terminal, complete Apple’s installer, then double-click this file again.\n' >&2
     exit 1
