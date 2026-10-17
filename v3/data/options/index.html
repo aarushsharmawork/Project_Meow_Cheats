@@ -11,7 +11,7 @@
   <fieldset>
     <legend><h2>Event blocking options (these options apply to enabled websites)</h2></legend>
     <div class="grid">
-      <div class="disabled" style="display: contents;">
+      <div style="display: contents;">
         <label for="visibilityState">Overwrite "document.visibilityState"</label>
         <input type="checkbox" id="visibilityState">
         <label for="hidden">Overwrite "document.hidden"</label>
@@ -27,7 +27,7 @@
       <input type="checkbox" id="mouseleave">
       <label for="mouseout">Filter page-wide mouse/pointer out events</label>
       <input type="checkbox" id="mouseout">
-      <label for="pointercapture">Globally block "lostpointercapture" events</label>
+      <label for="pointercapture">Filter page-level capture-loss signals; preserve element drag cleanup</label>
       <input type="checkbox" id="pointercapture">
       <label for="fullscreen">Protect fullscreen state when the page is hidden (experimental)</label>
       <input type="checkbox" id="fullscreen">

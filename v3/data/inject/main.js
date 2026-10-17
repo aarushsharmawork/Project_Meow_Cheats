@@ -1,4 +1,7 @@
 (() => {
+  // Embedded extension tools belong to the extension, not the host website.
+  if (/^(chrome|moz)-extension:$/.test(location.protocol) ||
+      [...(location.ancestorOrigins || [])].some(origin => /^(chrome|moz)-extension:\/\//.test(origin))) return;
   if (self.__alwaysActiveMain) {
     // Reconnect the existing page hooks when an extension update reinjects the
     // isolated settings controller into a document that is still open.
@@ -37,12 +40,12 @@
   /* visibility */
   Object.defineProperty(document, 'visibilityState', {
     get() {
-      return port.dataset.enabled === 'true' ? 'visible' : vstate.get.call(document);
+      return port.dataset.enabled === 'true' && port.dataset.spoofVisibilityState !== 'false' ? 'visible' : vstate.get.call(document);
     }
   });
   Object.defineProperty(document, 'webkitVisibilityState', {
     get() {
-      return port.dataset.enabled === 'true' ? 'visible' : vstate.get.call(document);
+      return port.dataset.enabled === 'true' && port.dataset.spoofVisibilityState !== 'false' ? 'visible' : vstate.get.call(document);
     }
   });
 
@@ -114,7 +117,9 @@
 
   /* pointercapture */
   window.addEventListener('lostpointercapture', e => {
-    if (port.dataset.enabled === 'true' && port.dataset.pointercapture !== 'false') {
+    // Element capture loss is needed to finish real drags and resize gestures.
+    if (port.dataset.enabled === 'true' && port.dataset.pointercapture !== 'false' &&
+        (e.target === window || e.target === document)) {
       block(e);
     }
   }, true);
@@ -122,12 +127,12 @@
   /* hidden */
   Object.defineProperty(document, 'hidden', {
     get() {
-      return port.dataset.enabled === 'true' ? false : hstate.get.call(document);
+      return port.dataset.enabled === 'true' && port.dataset.spoofHidden !== 'false' ? false : hstate.get.call(document);
     }
   });
   Object.defineProperty(document, 'webkitHidden', {
     get() {
-      return port.dataset.enabled === 'true' ? false : hstate.get.call(document);
+      return port.dataset.enabled === 'true' && port.dataset.spoofHidden !== 'false' ? false : hstate.get.call(document);
     }
   });
 

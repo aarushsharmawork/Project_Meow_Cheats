@@ -1,11 +1,10 @@
 const byId = id => document.getElementById(id);
-const mode = new URL(location.href).searchParams.get('mode') || 'popup';
-const persistent = mode === 'side' || mode === 'overlay';
-if (persistent) document.body.classList.add('persistent');
-if (persistent) byId('site-controls').open = true;
+byId('site-controls').open = true;
 const sectionLinks = [...document.querySelectorAll('.utility-rail a[href^="#"]')];
+let gemini;
 const selectSection = hash => {
   if (!sectionLinks.some(link => link.hash === hash)) return;
+  gemini?.hide();
   for (const link of sectionLinks) {
     if (link.hash === hash) link.setAttribute('aria-current', 'location');
     else link.removeAttribute('aria-current');
@@ -14,7 +13,7 @@ const selectSection = hash => {
 for (const link of sectionLinks) link.addEventListener('click', () => selectSection(link.hash));
 window.addEventListener('hashchange', () => selectSection(location.hash || '#typer-form'));
 selectSection(location.hash);
-const defaults = {text: '', preparationDelay: 3, minDelay: 110, maxDelay: 150, keepActive: true, engine: 'native', preserveFormatting: true};
+const defaults = {text: '', preparationDelay: 3, minDelay: 110, maxDelay: 150, keepActive: true, engine: 'native', preserveFormatting: false, skipLeadingFourSpaces: true};
 const controlIds = ['blockFullscreen', 'blockPointerLock', 'mousemove'];
 let tabId;
 let windowId;
@@ -24,6 +23,17 @@ let running = false;
 let pollTimer;
 let binding = 0;
 let disposed = false;
+let panelPort;
+const connectPanelLifecycle = async () => {
+  if (disposed || !Number.isInteger(windowId) || (chrome.sidePanel.onOpened && chrome.sidePanel.onClosed)) return;
+  if (await chrome.tabs.getCurrent() || disposed) return;
+  panelPort = chrome.runtime.connect({name: 'side-panel-lifecycle'});
+  panelPort.postMessage({windowId});
+  panelPort.onDisconnect.addListener(() => {
+    void chrome.runtime.lastError;
+    if (!disposed) setTimeout(() => connectPanelLifecycle().catch(console.error), 100);
+  });
+};
 let statusUntil = 0;
 const show = message => {
   byId('status').textContent = message;
@@ -41,12 +51,17 @@ const draft = () => ({
   maxDelay: Number(byId('maxDelay').value),
   engine: byId('engine').value,
   preserveFormatting: byId('preserveFormatting').checked,
+  skipLeadingFourSpaces: byId('skipLeadingFourSpaces').checked,
   keepActive: true
 });
 const fillDraft = value => {
-  value = {...defaults, ...value};
+  // Keep explicit saved choices, including drafts from before Stable existed.
+  const stable = value.skipLeadingFourSpaces ?? (value.preserveFormatting === undefined);
+  value = {...defaults, ...value, skipLeadingFourSpaces: stable};
   for (const id of ['text', 'preparationDelay', 'minDelay', 'maxDelay', 'engine']) byId(id).value = value[id];
-  byId('preserveFormatting').checked = value.preserveFormatting;
+  byId('skipLeadingFourSpaces').checked = value.skipLeadingFourSpaces === true;
+  byId('skipLeadingFourSpaces').disabled = value.engine !== 'native';
+  byId('preserveFormatting').checked = value.preserveFormatting && !value.skipLeadingFourSpaces;
   byId('native-setup').hidden = value.engine !== 'native';
 };
 // Issue the storage operation immediately so closing a popup cannot drop a draft
@@ -55,13 +70,17 @@ const save = () => chrome.storage.local.set({typerDraft: draft()});
 const buttons = () => {
   byId('start').disabled = busy || !supported || running;
   byId('stop').disabled = busy || !supported || !running;
-  for (const id of ['active', 'floating-panel', ...controlIds]) byId(id).disabled = busy || !supported;
+  for (const id of ['active', ...controlIds]) byId(id).disabled = busy || !supported;
 };
 const renderSite = result => {
   byId('active').checked = result.active;
   byId('reload').hidden = !result.reloadRequired;
   byId('active-note').textContent = result.wildcardRemoved ? 'The matching wildcard was removed from your site list. Review More settings if needed.' : '';
   for (const id of controlIds) byId(id).checked = result.controls?.[id] === true;
+  const names = {blockFullscreen: 'Fullscreen blocking', blockPointerLock: 'Cursor-lock blocking', mousemove: 'Idle mouse filtering'};
+  const limited = controlIds.filter(id => result.controls?.[id] && result.controlHooks?.[id] !== 'ready');
+  byId('control-note').textContent = limited.length ?
+    `Limited availability: ${limited.map(id => names[id]).join(', ')}. A page or frame did not expose a replaceable browser API. Try reloading; protection is not confirmed.` : '';
 };
 const renderStatus = state => {
   running = ['countdown', 'starting', 'typing'].includes(state.phase);
@@ -104,28 +123,35 @@ const bindTab = async (id, enableActive = false) => {
   }
   catch (e) { if (token === binding) show(e.message); }
 };
-byId('typer-form').addEventListener('input', () => save().catch(e => show(e.message)));
-byId('engine').addEventListener('change', () => {
-  byId('native-setup').hidden = byId('engine').value !== 'native';
+byId('typer-form').addEventListener('input', event => {
+  // These two checkboxes save together after their mutually exclusive change.
+  if (['preserveFormatting', 'skipLeadingFourSpaces'].includes(event.target.id)) return;
   save().catch(e => show(e.message));
 });
-byId('native-id').textContent = `First-time setup: double-click native/install.command in the project folder. It finds this extension and saves the setup file inside v3. Manual fallback extension ID: ${chrome.runtime.id}`;
-send('setup-export').then(result => {
-  if (!result.skipped) byId('native-setup-file').textContent = `Extension ID remembered. The installer saves its setup file at ${result.filename}.`;
-}).catch(error => {
+byId('engine').addEventListener('change', () => {
+  byId('native-setup').hidden = byId('engine').value !== 'native';
+  byId('skipLeadingFourSpaces').disabled = byId('engine').value !== 'native';
+  save().catch(e => show(e.message));
+});
+for (const [chosen, other] of [['preserveFormatting', 'skipLeadingFourSpaces'], ['skipLeadingFourSpaces', 'preserveFormatting']]) {
+  byId(chosen).addEventListener('change', () => {
+    if (byId(chosen).checked) byId(other).checked = false;
+    save().catch(e => show(e.message));
+  });
+}
+send('setup-export').catch(error => {
+  byId('native-setup-file').hidden = false;
   byId('native-setup-file').textContent = error.message;
 });
 for (const id of ['native-check', 'native-permission']) byId(id).addEventListener('click', async () => {
   try {
     const state = await send('native-check', {prompt: id === 'native-permission'});
-    byId('native-status').textContent = state.accessibility ? 'Keyboard helper connected. macOS keyboard permissions are enabled.' :
-      state.axTrusted === false ? 'Helper connected, but macOS denied Accessibility when Chrome launched it. Check Google Chrome and the keyboard helper in System Settings → Privacy & Security → Accessibility. If both are on after rebuilding the helper, remove the helper there and add the rebuilt app again, then check here.' :
-      state.postEventAccess === false ? 'Helper connected, but macOS denied keyboard-event posting. Click Request macOS keyboard permission, follow the macOS prompt, then check again.' :
-      'Helper connected, but macOS keyboard permission is unavailable. Click Request macOS keyboard permission, then check again.';
+    byId('native-status').textContent = state.accessibility ? 'Connected. Keyboard permission enabled.' :
+      'Helper connected. Request macOS keyboard permission, enable MeowCheats Keyboard in Accessibility, then check again.';
   }
   catch (e) { byId('native-status').textContent = e.message; }
 });
-window.addEventListener('pagehide', () => { disposed = true; clearTimeout(pollTimer); });
+window.addEventListener('pagehide', () => { disposed = true; clearTimeout(pollTimer); panelPort?.disconnect(); });
 byId('save').addEventListener('click', async () => {
   try { await save(); show('Draft saved.'); }
   catch (e) { show(e.message); }
@@ -169,7 +195,6 @@ byId('typer-form').addEventListener('submit', async event => {
       statusUntil = 0;
       renderStatus(state);
     }
-    if (!persistent) window.close();
   }
   catch (e) { show(e.message); }
   finally { busy = false; buttons(); }
@@ -186,22 +211,13 @@ byId('stop').addEventListener('click', async () => {
   finally { busy = false; buttons(); }
 });
 byId('reload').addEventListener('click', async () => {
-  try { await chrome.tabs.reload(tabId); if (!persistent) window.close(); }
+  try { await chrome.tabs.reload(tabId); }
   catch (e) { show(e.message); }
 });
 byId('options').addEventListener('click', () => chrome.runtime.openOptionsPage());
-byId('floating-panel').hidden = mode === 'overlay';
-byId('hide-panel').hidden = mode !== 'overlay';
-byId('side-panel').hidden = !chrome.sidePanel?.open || mode === 'side';
-byId('side-panel').addEventListener('click', () => {
-  // Call directly during the click: an awaited operation can lose the user gesture.
-  chrome.sidePanel.open({tabId}).then(() => { if (!persistent) window.close(); }).catch(e => show(e.message));
-});
-byId('floating-panel').addEventListener('click', async () => {
-  try { await send('panel-show'); if (!persistent) window.close(); }
-  catch (e) { show(e.message); }
-});
-byId('hide-panel').addEventListener('click', () => send('panel-hide').catch(e => show(e.message)));
+gemini = createGeminiView({save, target: () => supported ? tabId : null, stop: async () => {
+  if (supported && Number.isInteger(tabId)) await send('typer-stop');
+}});
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || disposed) return;
   if (changes.typerDraft?.newValue && JSON.stringify(changes.typerDraft.newValue) !== JSON.stringify(draft())) {
@@ -213,26 +229,23 @@ chrome.storage.onChanged.addListener((changes, area) => {
     send('site-state').then(result => { if (current === tabId) renderSite(result); }).catch(() => {});
   }
 });
-if (mode === 'side') {
-  chrome.tabs.onActivated.addListener(info => { if (info.windowId === windowId) bindTab(info.tabId); });
-}
+chrome.tabs.onActivated.addListener(info => { if (info.windowId === windowId) bindTab(info.tabId); });
 chrome.tabs.onUpdated.addListener((id, changes) => {
-  if (persistent && id === tabId && (changes.url || changes.status === 'complete')) bindTab(id);
+  if (id === tabId && (changes.url || changes.status === 'complete')) bindTab(id);
 });
 (async () => {
   try {
     const prefs = await chrome.storage.local.get({typerDraft: defaults});
     fillDraft(prefs.typerDraft);
     byId('save').disabled = false;
+    gemini.ready();
     const commands = await chrome.commands.getAll();
     const shortcut = name => commands.find(command => command.name === name)?.shortcut || 'unassigned';
-    byId('panel-shortcut').textContent = `Menu: ${shortcut('toggle-panel')}. Start saved draft: ${shortcut('start-typing')}. Escape stops typing. Change shortcuts in the browser’s extension shortcuts settings.`;
+    byId('panel-shortcut').textContent = `Open/close side panel: ${shortcut('toggle-panel')}. Start/stop typing: ${shortcut('start-typing')}. Escape also stops typing. Change shortcuts in the browser’s extension shortcuts settings.`;
     windowId = (await chrome.windows.getCurrent()).id;
-    const context = mode === 'overlay' ? await send('panel-context') : null;
-    const id = context?.tabId ?? (await chrome.tabs.query({active: true, currentWindow: true}))[0]?.id;
-    // The worker enables the site before opening a floating panel. Its iframe
-    // may also be recreated for recovery; that must not undo a later OFF click.
-    await bindTab(id, mode !== 'overlay');
+    await connectPanelLifecycle();
+    const id = (await chrome.tabs.query({active: true, currentWindow: true}))[0]?.id;
+    await bindTab(id, true);
   }
   catch (e) { show(e.message); }
 })();
