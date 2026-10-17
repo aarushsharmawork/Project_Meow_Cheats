@@ -139,12 +139,12 @@ document.getElementById('reset').addEventListener('click', e => {
 
 // support
 document.getElementById('support').addEventListener('click', () => chrome.tabs.create({
-  url: chrome.runtime.getManifest().homepage_url + '?rd=donate'
+  url: chrome.runtime.getManifest().homepage_url
 }));
 
 // report
 document.getElementById('report').addEventListener('click', () => chrome.tabs.create({
-  url: chrome.runtime.getManifest().homepage_url + '#reviews'
+  url: chrome.runtime.getManifest().homepage_url + '/issues'
 }));
 
 // test

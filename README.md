@@ -2,6 +2,8 @@
 
 An auto typer with a browser side panel and per-site always-active controls.
 
+Intended for education and authorized automation/testing. See [Licence](LICENSE), [Disclaimer](DISCLAIMER.md), [Privacy](PRIVACY.md), and [Third-party credits](THIRD_PARTY_NOTICES.md).
+
 ## 1. Install the extension
 
 1. Download the project and save it into a permanent folder.
@@ -64,3 +66,9 @@ The extension uses only the browser's side panel; no floating controls are inser
 Gemini stays loaded when switching views or hiding the panel. Your typing draft is saved and typing stops when opening Gemini; your draft is never sent automatically. Use **⋯ → Disable Gemini** to unload it and revoke its optional permission. Google can still restrict embedded sign-in or connections; the extension does not bypass those checks.
 
 To attach the current webpage, click **Add screenshot**, review the image, then **Attach to Gemini**. The browser side panel is not part of the webpage capture. This does not change your clipboard or send your message. Confirm that Gemini displays an attachment preview before sending. If capture permission has expired, click MeowCheats’s toolbar icon on that webpage and try again.
+
+## Licence and responsible use
+
+MeowCheats source code is distributed under **Mozilla Public License 2.0**, with upstream attribution in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Keep applicable notices and make the corresponding MPL-covered source available when distributing modified code or binaries.
+
+The [disclaimer](DISCLAIMER.md) describes education, authorized IDE/editor testing, and warranty/liability limits; it does not authorize violating website or institutional rules or guarantee immunity from liability. Gemini remains a third-party service, and this project's embedding approach has unresolved terms/permission questions. See [PRIVACY.md](PRIVACY.md) for screenshot and data handling and [LEGAL_REVIEW.md](LEGAL_REVIEW.md) for remaining release checks.
