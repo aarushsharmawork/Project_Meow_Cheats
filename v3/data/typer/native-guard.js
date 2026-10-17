@@ -1,6 +1,7 @@
 /* Native focus APIs in the isolated world remain independent of page overrides. */
 (() => {
-  if (self.__meowNativeGuard) return;
+  if (self.__meowNativeGuard?.version === 2) return;
+  self.__meowNativeGuard?.stop?.();
   let target;
   const active = () => {
     let element = document.activeElement;
@@ -13,6 +14,7 @@
     chrome.runtime.sendMessage({method: 'native-cancel'}).catch(() => {});
   };
   self.__meowNativeGuard = {
+    version: 2,
     start() {
       const element = active();
       if (!document.hasFocus() || !element || ['BODY', 'HTML', 'IFRAME', 'FRAME'].includes(element.tagName) ||
@@ -21,6 +23,12 @@
       }
       target = element;
       return true;
+    },
+    backspaceWidth() {
+      // CodeMirror 5's default Backspace removes a character, while Ace and
+      // Monaco remove a soft-indent level. Identify only the editor container;
+      // do not read its source/model API. Custom bindings have a manual setting.
+      return target?.closest('.CodeMirror') ? 4 : 1;
     },
     check() { return !!target && target.isConnected && !target.disabled && !target.readOnly &&
       target.type !== 'password' && document.hasFocus() && active() === target; },
