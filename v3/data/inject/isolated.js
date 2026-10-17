@@ -1,4 +1,6 @@
 (() => {
+  if (/^(chrome|moz)-extension:$/.test(location.protocol) ||
+      [...(location.ancestorOrigins || [])].some(origin => /^(chrome|moz)-extension:\/\//.test(origin))) return;
   if (self.__alwaysActiveIsolated === 2) {
     self.__alwaysActiveRefresh?.();
     return;
@@ -38,7 +40,7 @@ const update = async () => {
   const id = ++updateId;
   try {
     const [prefs, context] = await Promise.all([
-      chrome.storage.local.get({enabled: true, blur: true, focus: true, redirect: true,
+      chrome.storage.local.get({enabled: true, visibilityState: true, hidden: true, blur: true, focus: true, redirect: true,
         mouseleave: true, mouseout: true, visibility: true, pointercapture: true,
         fullscreen: false, policies: null}),
       chrome.runtime.sendMessage({method: 'page-controls'})
@@ -47,6 +49,8 @@ const update = async () => {
     const {hostname, active, controls} = context.result;
     const policy = prefs.policies?.[hostname] || [];
     port.dataset.enabled = active;
+    port.dataset.spoofHidden = !policy.includes('hidden') && prefs.hidden;
+    port.dataset.spoofVisibilityState = !policy.includes('visibilityState') && prefs.visibilityState;
     for (const setting of ['blur', 'focus', 'redirect', 'mouseleave', 'mouseout', 'visibility', 'pointercapture']) {
       port.dataset[setting] = !policy.includes(setting) && prefs[setting];
     }
@@ -65,7 +69,7 @@ const update = async () => {
 
 self.__alwaysActiveRefresh = update;
 update();
-const settings = new Set(['enabled', 'hosts', 'siteControls', 'blur', 'focus', 'redirect',
+const settings = new Set(['enabled', 'hosts', 'siteControls', 'visibilityState', 'hidden', 'blur', 'focus', 'redirect',
   'mouseleave', 'mouseout', 'visibility', 'pointercapture', 'fullscreen', 'policies', 'badge']);
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && Object.keys(changes).some(key => settings.has(key))) update();
