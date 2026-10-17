@@ -30,7 +30,7 @@
     run.restore.push(() => { if (same(get(), installed)) set(original); });
   };
   const unsupported = name => {
-    throw new Error(`${name} does not expose the editor API needed to preserve code formatting. No source text was sent. Use Browser editing if supported, or disable the editor's auto-indent and auto-pairing before turning off Preserve code formatting.`);
+    throw new Error(`${name} does not expose the editor API needed to preserve code formatting. No source text was sent. Use Browser editing if supported, or disable the editor's auto-indent and auto-pairing before turning off Preserve code formatting (Unstable).`);
   };
   const adapter = (element, hasTabs) => {
     const monacoNode = element.closest('.monaco-editor');
