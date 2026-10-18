@@ -31,9 +31,10 @@ Installed but not connected? Remove **MeowCheats Keyboard** from Accessibility, 
 
 The setup JSON contains a public extension ID, not a password or your text. The installer creates it because Chrome cannot write directly into its own extension folder. These files are ignored by Git; you do not need to edit or publish them.
 
+## [ALWAYS USE THE CHROME IN MINIMISED FORM TO USE KEEP THIS SITE ACTIVE]
 ## 4. Paste your text
 
-1. Open the destination website and click **MeowCheats**.
+1. Click **MeowCheats** or **Command+Shift+U** before opening the destination website .
 2. Paste your text into **Your text**. Your draft and settings save automatically.
 3. Choose a typing method and set the start delay (default **3 seconds**) and character delays. On macOS, **macOS simulated keyboard** and **Preserve code formatting (Stable)** are the defaults. **Keep this site active** is enabled when you open the panel. Saved formatting choices and custom delays are preserved.
 4. Click **Start typing**, then click the destination field before the countdown ends. Keep that browser and field focused.
